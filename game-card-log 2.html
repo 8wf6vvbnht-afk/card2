@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>閱讀紀錄</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --text:#1c1c1a;
+    --text-2:#8c8a83;
+    --text-3:#b7b4ac;
+    --line:#e6e3db;
+    --line-strong:#cfccc2;
+    --unread-dot:#1c1c1a;
+    --read-dot:#cfccc2;
+    --danger:#a5453a;
+    --nav-h:64px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei","Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .serif{font-family:Georgia,"Noto Serif TC","Songti TC",serif;}
+  a{color:inherit;text-decoration:none;}
+  button{
+    font-family:inherit;
+    background:none;
+    border:none;
+    color:inherit;
+    cursor:pointer;
+    padding:0;
+    font-size:inherit;
+  }
+  input,select,textarea{
+    font-family:inherit;
+    font-size:15px;
+    color:var(--text);
+    background:transparent;
+    border:none;
+    border-bottom:1px solid var(--line);
+    padding:8px 0;
+    width:100%;
+    outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-bottom-color:var(--text);}
+  textarea{resize:vertical;min-height:70px;line-height:1.6;}
+  ::placeholder{color:var(--text-3);}
+
+  #app{
+    max-width:640px;
+    margin:0 auto;
+    min-height:100vh;
+    padding-bottom:calc(var(--nav-h) + 24px);
+    position:relative;
+  }
+
+  /* ---- Top bar ---- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:20px 20px 10px;
+  }
+  .topbar .back{
+    font-size:20px;
+    color:var(--text-2);
+    line-height:1;
+    padding:4px 8px 4px 0;
+  }
+  .topbar .back:hover{color:var(--text);}
+  .topbar h1{
+    font-size:20px;
+    font-weight:600;
+    margin:0;
+    letter-spacing:0.02em;
+  }
+  .topbar .action{
+    margin-left:auto;
+    font-size:14px;
+    color:var(--text-2);
+  }
+  .topbar .action:hover{color:var(--text);}
+
+  .page-pad{padding:0 20px;}
+
+  /* ---- search / filter ---- */
+  .searchbar{
+    display:flex;align-items:center;gap:8px;
+    border-bottom:1px solid var(--line);
+    padding:6px 0;
+    margin:4px 20px 4px;
+  }
+  .searchbar input{border-bottom:none;padding:4px 0;}
+  .searchbar .icon{color:var(--text-3);font-size:14px;}
+
+  .filter-row{
+    display:flex;flex-wrap:wrap;gap:6px 14px;
+    padding:10px 20px 6px;
+  }
+  .filter-chip{
+    font-size:13px;
+    color:var(--text-2);
+    padding:3px 0;
+    border-bottom:1px solid transparent;
+  }
+  .filter-chip.active{color:var(--text);border-bottom-color:var(--text);}
+  .filter-clear{font-size:13px;color:var(--text-3);}
+  .filter-clear:hover{color:var(--danger);}
+
+  /* ---- lists ---- */
+  .section-label{
+    font-size:12px;
+    color:var(--text-3);
+    letter-spacing:0.08em;
+    padding:18px 20px 6px;
+  }
+  .list{padding:0 20px;}
+  .row{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    padding:16px 0;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+  }
+  .row:hover .row-title{color:var(--text);text-decoration:underline;text-underline-offset:3px;}
+  .row-main{min-width:0;flex:1;}
+  .row-title{
+    font-size:16px;
+    font-weight:500;
+    margin:0 0 4px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .row-sub{
+    font-size:13px;
+    color:var(--text-2);
+    display:flex;flex-wrap:wrap;gap:0 8px;
+  }
+  .row-sub span:not(:last-child)::after{content:"·";margin-left:8px;color:var(--text-3);}
+  .row-right{
+    text-align:right;
+    flex-shrink:0;
+    font-size:13px;
+    color:var(--text-2);
+    display:flex;flex-direction:column;align-items:flex-end;gap:4px;
+  }
+  .status-dot{
+    width:6px;height:6px;border-radius:50%;
+    display:inline-block;
+    background:var(--unread-dot);
+    margin-right:2px;
+  }
+  .status-dot.read{background:var(--read-dot);}
+
+  .empty{
+    padding:60px 20px;
+    text-align:center;
+    color:var(--text-3);
+    font-size:14px;
+    line-height:1.8;
+  }
+  .empty .add-link{
+    display:inline-block;margin-top:10px;
+    color:var(--text);border-bottom:1px solid var(--text);
+  }
+
+  .fab-row{
+    padding:16px 20px 4px;
+    display:flex;justify-content:flex-end;
+  }
+  .plus-btn{
+    font-size:14px;
+    color:var(--text);
+    border-bottom:1px solid var(--text);
+    padding-bottom:1px;
+  }
+
+  /* ---- detail page fields ---- */
+  .field-block{padding:14px 20px;border-bottom:1px solid var(--line);}
+  .field-label{font-size:12px;color:var(--text-3);letter-spacing:0.06em;margin-bottom:6px;}
+  .field-value{font-size:16px;line-height:1.7;}
+  .field-value.muted{color:var(--text-3);}
+  .field-value.link{border-bottom:1px solid var(--line);display:inline-block;cursor:pointer;}
+  .field-value.link:hover{border-bottom-color:var(--text);}
+  .note-block{white-space:pre-wrap;}
+
+  .detail-actions{
+    display:flex;gap:20px;
+    padding:20px;
+  }
+  .detail-actions button{font-size:14px;color:var(--text-2);}
+  .detail-actions button:hover{color:var(--text);}
+  .detail-actions .danger:hover{color:var(--danger);}
+
+  .stars{font-size:15px;letter-spacing:2px;color:var(--text);}
+
+  /* ---- form ---- */
+  .form-wrap{padding:6px 20px 40px;}
+  .form-field{margin-bottom:22px;}
+  .form-field label{
+    display:block;font-size:12px;color:var(--text-2);
+    letter-spacing:0.04em;margin-bottom:8px;
+  }
+  .req::after{content:" *";color:var(--danger);}
+  .form-actions{
+    display:flex;justify-content:space-between;align-items:center;
+    padding-top:10px;
+  }
+  .btn-primary{
+    font-size:15px;color:var(--bg);background:var(--text);
+    padding:11px 26px;border-radius:2px;
+  }
+  .btn-primary:hover{background:#000;}
+  .btn-text{font-size:14px;color:var(--text-2);}
+  .btn-text:hover{color:var(--text);}
+
+  .choice-list{display:flex;flex-wrap:wrap;gap:8px 10px;}
+  .choice{
+    font-size:13.5px;
+    padding:6px 12px;
+    border:1px solid var(--line-strong);
+    border-radius:14px;
+    color:var(--text-2);
+  }
+  .choice.selected{background:var(--text);color:var(--bg);border-color:var(--text);}
+  .choice.add-new{color:var(--text-2);border-style:dashed;}
+
+  .hint{font-size:12.5px;color:var(--text-3);margin-top:8px;line-height:1.6;}
+
+  /* ---- settings ---- */
+  .tabs{
+    display:flex;gap:18px;
+    padding:6px 20px 14px;
+    border-bottom:1px solid var(--line);
+    overflow-x:auto;
+  }
+  .tab{
+    font-size:14px;color:var(--text-2);white-space:nowrap;padding-bottom:10px;
+    border-bottom:2px solid transparent;
+  }
+  .tab.active{color:var(--text);border-bottom-color:var(--text);}
+
+  .settings-item{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 0;border-bottom:1px solid var(--line);
+    gap:10px;
+  }
+  .settings-item .name{font-size:15.5px;}
+  .settings-item .meta{font-size:12.5px;color:var(--text-3);margin-top:2px;}
+  .settings-item .ops{display:flex;gap:14px;font-size:13px;color:var(--text-2);flex-shrink:0;}
+  .settings-item .ops button:hover{color:var(--text);}
+  .settings-item .ops .danger:hover{color:var(--danger);}
+
+  .inline-add{
+    display:flex;gap:10px;align-items:center;
+    padding:16px 0 6px;
+  }
+  .inline-add input{flex:1;}
+  .inline-add button{font-size:14px;color:var(--text);border-bottom:1px solid var(--text);white-space:nowrap;}
+
+  .backup-block{padding:20px 0;border-bottom:1px solid var(--line);}
+  .backup-block .desc{font-size:13.5px;color:var(--text-2);line-height:1.7;margin-bottom:12px;}
+  .backup-block button, .backup-block label{
+    font-size:14px;color:var(--text);border-bottom:1px solid var(--text);
+    cursor:pointer;display:inline-block;
+  }
+
+  /* ---- calendar ---- */
+  .cal-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:6px 20px 10px;
+  }
+  .cal-head .month{font-size:18px;font-weight:600;}
+  .cal-nav{display:flex;gap:18px;font-size:15px;color:var(--text-2);}
+  .cal-nav button:hover{color:var(--text);}
+  .cal-grid{
+    display:grid;grid-template-columns:repeat(7,1fr);
+    padding:0 20px;gap:2px;
+  }
+  .cal-dow{text-align:center;font-size:11px;color:var(--text-3);padding:6px 0 10px;}
+  .cal-cell{
+    aspect-ratio:1/1;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:13.5px;color:var(--text-2);
+    cursor:pointer;position:relative;border-radius:50%;
+  }
+  .cal-cell.empty{cursor:default;}
+  .cal-cell.today{color:var(--text);font-weight:700;}
+  .cal-cell.selected{background:var(--text);color:var(--bg)!important;}
+  .cal-cell .dot{width:4px;height:4px;border-radius:50%;background:var(--text);margin-top:3px;}
+  .cal-cell.selected .dot{background:var(--bg);}
+  .cal-cell.has-record:not(.selected){color:var(--text);}
+
+  /* ---- bottom nav ---- */
+  .bottomnav{
+    position:fixed;bottom:0;left:0;right:0;
+    background:rgba(255,255,255,0.96);
+    backdrop-filter:blur(6px);
+    border-top:1px solid var(--line);
+    display:flex;
+    max-width:640px;margin:0 auto;
+    height:var(--nav-h);
+    z-index:50;
+  }
+  .navitem{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    color:var(--text-3);font-size:11.5px;
+  }
+  .navitem .glyph{font-size:18px;line-height:1;}
+  .navitem.active{color:var(--text);}
+
+  /* ---- modal ---- */
+  .modal-mask{
+    position:fixed;inset:0;background:rgba(20,20,18,0.35);
+    display:flex;align-items:center;justify-content:center;
+    z-index:100;padding:24px;
+  }
+  .modal-box{
+    background:var(--bg);max-width:380px;width:100%;
+    padding:26px 24px;border-radius:2px;
+  }
+  .modal-box h3{font-size:16px;margin:0 0 12px;font-weight:600;}
+  .modal-box p{font-size:14px;color:var(--text-2);line-height:1.7;margin:0 0 20px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:20px;}
+  .modal-actions button{font-size:14px;}
+  .modal-actions .confirm{color:var(--danger);}
+  .modal-actions .confirm:hover{text-decoration:underline;}
+  .modal-actions .cancel{color:var(--text-2);}
+  .modal-actions .cancel:hover{color:var(--text);}
+
+  .toast{
+    position:fixed;bottom:calc(var(--nav-h) + 16px);left:50%;transform:translateX(-50%);
+    background:var(--text);color:var(--bg);
+    font-size:13.5px;padding:10px 18px;border-radius:20px;
+    z-index:200;opacity:0;transition:opacity .25s;pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+
+  .loading-screen{
+    display:flex;align-items:center;justify-content:center;height:100vh;
+    color:var(--text-3);font-size:14px;
+  }
+</style>
+</head>
+<body>
+<div id="app"><div class="loading-screen">載入中…</div></div>
+<div id="toast" class="toast"></div>
+
+<script>
+/* =========================================================
+   資料層
+   ========================================================= */
+const STORAGE_KEY = 'gamecard-app-data-v1';
+const DEFAULT_TYPES = ['主線','活動','卡組（故事）','私語（純聲音）'];
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+function emptyData(){
+  return {
+    version: 1,
+    games: [],
+    events: [],
+    characters: [],
+    types: DEFAULT_TYPES.map((n,i)=>({id: uid(), name:n, order:i})),
+    cards: []
+  };
+}
+
+let DATA = null;
+
+// 儲存策略：優先使用手機瀏覽器本身的 localStorage（離線、不依賴任何網路服務），
+// 如果剛好在支援 window.storage 的環境下開啟，則同時備份一份上去，但不強制依賴它。
+function hasLocalStorage(){
+  try{
+    const k = '__test__';
+    localStorage.setItem(k,'1');
+    localStorage.removeItem(k);
+    return true;
+  }catch(e){ return false; }
+}
+const LOCAL_OK = hasLocalStorage();
+
+async function loadData(){
+  let raw = null;
+  if(LOCAL_OK){
+    raw = localStorage.getItem(STORAGE_KEY);
+  }
+  if(!raw && typeof window.storage !== 'undefined'){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value) raw = res.value;
+    }catch(e){ /* 沒有這個環境或找不到資料，忽略 */ }
+  }
+  if(raw){
+    try{ DATA = JSON.parse(raw); }catch(e){ DATA = emptyData(); }
+    if(!DATA.types || DATA.types.length===0){
+      DATA.types = DEFAULT_TYPES.map((n,i)=>({id: uid(), name:n, order:i}));
+    }
+  } else {
+    DATA = emptyData();
+  }
+  await persist();
+}
+
+let saveTimer = null;
+async function persist(){
+  const json = JSON.stringify(DATA);
+  let ok = false;
+  if(LOCAL_OK){
+    try{ localStorage.setItem(STORAGE_KEY, json); ok = true; }catch(e){}
+  }
+  if(typeof window.storage !== 'undefined'){
+    try{ await window.storage.set(STORAGE_KEY, json, false); ok = true; }catch(e){}
+  }
+  if(!ok){
+    showToast('這個瀏覽器目前無法儲存資料，請改用 Safari 開啟');
+  }
+}
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persist, 250);
+}
+
+/* =========================================================
+   小工具
+   ========================================================= */
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>el.classList.remove('show'), 1800);
+}
+function esc(s){
+  return (s==null?'':String(s)).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtDate(d){
+  if(!d) return '';
+  const dt = new Date(d+'T00:00:00');
+  return `${dt.getFullYear()}/${dt.getMonth()+1}/${dt.getDate()}`;
+}
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function gameById(id){ return DATA.games.find(g=>g.id===id); }
+function eventById(id){ return DATA.events.find(e=>e.id===id); }
+function typeById(id){ return DATA.types.find(t=>t.id===id); }
+function charById(id){ return DATA.characters.find(c=>c.id===id); }
+function cardsOfGame(gid){ return DATA.cards.filter(c=>c.gameId===gid); }
+function cardsOfEvent(eid){ return DATA.cards.filter(c=>c.eventId===eid); }
+function cardsOfChar(cid){ return DATA.cards.filter(c=>c.characterIds && c.characterIds.includes(cid)); }
+function cardsOfType(tid){ return DATA.cards.filter(c=>c.typeId===tid); }
+
+/* =========================================================
+   路由
+   ========================================================= */
+let ROUTE = {name:'games', params:{}};
+const FILTERS = {
+  cards: {search:'', gameId:'', eventId:'', typeId:'', charId:'', status:'', date:''},
+  gameDetail: {},
+  charDetail: {},
+  eventDetail: {}
+};
+
+function nav(name, params={}){
+  ROUTE = {name, params};
+  window.scrollTo(0,0);
+  render();
+}
+function goBack(){ history.back(); }
+
+window.addEventListener('popstate', ()=>{ render(); });
+
+/* =========================================================
+   共用元件
+   ========================================================= */
+function BottomNav(active){
+  const items = [
+    {key:'games', label:'遊戲紀錄', glyph:'▤'},
+    {key:'cards', label:'卡片紀錄', glyph:'▥'},
+    {key:'characters', label:'角色檔案', glyph:'☺'},
+    {key:'calendar', label:'經歷', glyph:'▦'},
+    {key:'settings', label:'設定', glyph:'⚙'},
+  ];
+  return `<div class="bottomnav">
+    ${items.map(it=>`
+      <div class="navitem ${active===it.key?'active':''}" onclick="nav('${it.key}')">
+        <span class="glyph">${it.glyph}</span>
+        <span>${it.label}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function TopBar(title, opts={}){
+  return `<div class="topbar">
+    ${opts.back? `<button class="back" onclick="goBack()">‹</button>` : ''}
+    <h1 class="serif">${esc(title)}</h1>
+    ${opts.actionLabel? `<button class="action" onclick="${opts.actionFn}">${esc(opts.actionLabel)}</button>`:''}
+  </div>`;
+}
+
+function StatusDot(status){
+  return `<span class="status-dot ${status==='read'?'read':''}"></span>`;
+}
+
+function CardRow(card){
+  const g = gameById(card.gameId);
+  const ev = card.eventId? eventById(card.eventId) : null;
+  const t = typeById(card.typeId);
+  const chars = (card.characterIds||[]).map(id=>charById(id)).filter(Boolean);
+  return `<div class="row" onclick="nav('cardDetail',{id:'${card.id}'})">
+    <div class="row-main">
+      <p class="row-title">${esc(card.name)}</p>
+      <div class="row-sub">
+        ${g? `<span>${esc(g.name)}</span>`:''}
+        ${ev? `<span>${esc(ev.name)}</span>`:''}
+        ${t? `<span>${esc(t.name)}</span>`:''}
+        ${chars.length? `<span>${chars.map(c=>esc(c.name)).join('、')}</span>`:''}
+      </div>
+    </div>
+    <div class="row-right">
+      <span>${StatusDot(card.status)}${card.status==='read'?'已讀':'未讀'}</span>
+      ${card.readDate? `<span>${fmtDate(card.readDate)}</span>`:''}
+    </div>
+  </div>`;
+}
+
+function Modal(html){
+  const mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  mask.innerHTML = `<div class="modal-box">${html}</div>`;
+  mask.addEventListener('click', e=>{ if(e.target===mask) closeModal(); });
+  document.body.appendChild(mask);
+  return mask;
+}
+function closeModal(){
+  document.querySelectorAll('.modal-mask').forEach(m=>m.remove());
+}
+function confirmModal({title, desc, confirmLabel='確認刪除', onConfirm}){
+  const id = 'cf_'+uid();
+  const m = Modal(`
+    <h3>${esc(title)}</h3>
+    <p>${desc}</p>
+    <div class="modal-actions">
+      <button class="cancel" onclick="closeModal()">取消</button>
+      <button class="confirm" id="${id}">${esc(confirmLabel)}</button>
+    </div>
+  `);
+  m.querySelector('#'+id).addEventListener('click', ()=>{ closeModal(); onConfirm(); });
+}
+function promptModal({title, desc='', placeholder='', initial='', confirmLabel='儲存', onConfirm}){
+  const id = 'pm_'+uid();
+  const m = Modal(`
+    <h3>${esc(title)}</h3>
+    ${desc?`<p>${desc}</p>`:''}
+    <div class="form-field" style="margin-bottom:20px;">
+      <input id="${id}" type="text" placeholder="${esc(placeholder)}" value="${esc(initial)}">
+    </div>
+    <div class="modal-actions">
+      <button class="cancel" onclick="closeModal()">取消</button>
+      <button class="confirm" id="${id}_ok" style="color:var(--text)">${esc(confirmLabel)}</button>
+    </div>
+  `);
+  const input = m.querySelector('#'+id);
+  input.focus();
+  const submit = ()=>{
+    const v = input.value.trim();
+    if(!v){ showToast('名稱不能為空白'); return; }
+    closeModal(); onConfirm(v);
+  };
+  m.querySelector('#'+id+'_ok').addEventListener('click', submit);
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+}
+
+/* =========================================================
+   頁面：遊戲紀錄
+   ========================================================= */
+let gamesSearch = '';
+function renderGamesPage(){
+  const list = DATA.games
+    .filter(g=> g.name.toLowerCase().includes(gamesSearch.toLowerCase()))
+    .sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
+
+  const rows = list.map(g=>{
+    const cards = cardsOfGame(g.id);
+    const unread = cards.filter(c=>c.status!=='read').length;
+    const read = cards.length - unread;
+    return `<div class="row" onclick="nav('gameDetail',{id:'${g.id}'})">
+      <div class="row-main">
+        <p class="row-title">${esc(g.name)}</p>
+        <div class="row-sub"><span>共 ${cards.length} 張卡片</span></div>
+      </div>
+      <div class="row-right">
+        <span>未讀 ${unread}</span>
+        <span>已讀 ${read}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    ${TopBar('遊戲紀錄')}
+    <div class="searchbar">
+      <span class="icon">搜尋</span>
+      <input id="gamesSearch" placeholder="輸入遊戲名稱" value="${esc(gamesSearch)}">
+    </div>
+    <div class="list">
+      ${list.length? rows : `<div class="empty">還沒有任何遊戲<br><span class="add-link" onclick="openGameForm()">新增第一個遊戲</span></div>`}
+    </div>
+    ${list.length? `<div class="fab-row"><button class="plus-btn" onclick="openGameForm()">＋ 新增遊戲</button></div>`:''}
+  `;
+}
+
+function openGameForm(edit){
+  promptModal({
+    title: edit? '編輯遊戲名稱' : '新增遊戲',
+    placeholder:'遊戲名稱',
+    initial: edit? edit.name : '',
+    onConfirm:(name)=>{
+      if(edit){ edit.name = name; }
+      else { DATA.games.push({id:uid(), name, note:''}); }
+      scheduleSave(); render();
+    }
+  });
+}
+
+/* =========================================================
+   頁面：遊戲詳細
+   ========================================================= */
+function renderGameDetail(id){
+  const g = gameById(id);
+  if(!g) return renderNotFound('找不到這個遊戲');
+  const f = FILTERS.gameDetail;
+  let cards = cardsOfGame(id);
+  const events = DATA.events.filter(e=>e.gameId===id);
+
+  if(f.search) cards = cards.filter(c=>c.name.toLowerCase().includes(f.search.toLowerCase()));
+  if(f.eventId) cards = cards.filter(c=>c.eventId===f.eventId);
+  if(f.typeId) cards = cards.filter(c=>c.typeId===f.typeId);
+  if(f.charId) cards = cards.filter(c=>(c.characterIds||[]).includes(f.charId));
+  if(f.status) cards = cards.filter(c=>c.status===f.status);
+
+  cards = cards.slice().sort((a,b)=>{
+    if(a.status!==b.status) return a.status==='read'?1:-1;
+    return a.name.localeCompare(b.name,'zh-Hant');
+  });
+
+  return `
+    ${TopBar(g.name, {back:true})}
+    ${g.note? `<div class="page-pad" style="padding-bottom:10px;"><p style="font-size:13.5px;color:var(--text-2);line-height:1.6;">${esc(g.note)}</p></div>`:''}
+    <div class="searchbar">
+      <span class="icon">搜尋</span>
+      <input id="gameDetailSearch" placeholder="搜尋此遊戲內的卡片" value="${esc(f.search||'')}">
+    </div>
+    <div class="filter-row">
+      ${events.length? `<select onchange="FILTERS.gameDetail.eventId=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">全部活動</option>
+        ${events.map(e=>`<option value="${e.id}" ${f.eventId===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}
+      </select>`:''}
+      <select onchange="FILTERS.gameDetail.typeId=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">全部類型</option>
+        ${DATA.types.map(t=>`<option value="${t.id}" ${f.typeId===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}
+      </select>
+      <select onchange="FILTERS.gameDetail.status=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">已讀／未讀</option>
+        <option value="unread" ${f.status==='unread'?'selected':''}>未讀</option>
+        <option value="read" ${f.status==='read'?'selected':''}>已讀</option>
+      </select>
+      ${(f.search||f.eventId||f.typeId||f.charId||f.status)? `<span class="filter-clear" onclick="FILTERS.gameDetail={}; render()">清除篩選</span>`:''}
+    </div>
+    <div class="section-label">卡片（${cards.length}）</div>
+    <div class="list">
+      ${cards.length? cards.map(CardRow).join('') : `<div class="empty">沒有符合條件的卡片</div>`}
+    </div>
+    <div class="fab-row"><button class="plus-btn" onclick="nav('cardForm',{gameId:'${id}'})">＋ 新增卡片</button></div>
+  `;
+}
+
+/* =========================================================
+   頁面：卡片紀錄
+   ========================================================= */
+function renderCardsPage(){
+  const f = FILTERS.cards;
+  let cards = DATA.cards.slice();
+
+  if(f.search){
+    const s = f.search.toLowerCase();
+    cards = cards.filter(c=>{
+      const g = gameById(c.gameId), ev = c.eventId?eventById(c.eventId):null;
+      const chars = (c.characterIds||[]).map(id=>charById(id)).filter(Boolean);
+      return c.name.toLowerCase().includes(s) ||
+        (g&&g.name.toLowerCase().includes(s)) ||
+        (ev&&ev.name.toLowerCase().includes(s)) ||
+        chars.some(ch=>ch.name.toLowerCase().includes(s));
+    });
+  }
+  if(f.gameId) cards = cards.filter(c=>c.gameId===f.gameId);
+  if(f.eventId) cards = cards.filter(c=>c.eventId===f.eventId);
+  if(f.typeId) cards = cards.filter(c=>c.typeId===f.typeId);
+  if(f.charId) cards = cards.filter(c=>(c.characterIds||[]).includes(f.charId));
+  if(f.status) cards = cards.filter(c=>c.status===f.status);
+  if(f.date) cards = cards.filter(c=>c.readDate===f.date);
+
+  cards.sort((a,b)=>{
+    if(a.status!==b.status) return a.status==='read'?1:-1;
+    return (b.readDate||'').localeCompare(a.readDate||'');
+  });
+
+  const hasFilter = f.search||f.gameId||f.eventId||f.typeId||f.charId||f.status||f.date;
+
+  return `
+    ${TopBar('卡片紀錄')}
+    <div class="searchbar">
+      <span class="icon">搜尋</span>
+      <input id="cardsSearch" placeholder="搜尋卡片、遊戲、活動或角色" value="${esc(f.search)}">
+    </div>
+    <div class="filter-row">
+      <select onchange="FILTERS.cards.gameId=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">全部遊戲</option>
+        ${DATA.games.map(g=>`<option value="${g.id}" ${f.gameId===g.id?'selected':''}>${esc(g.name)}</option>`).join('')}
+      </select>
+      <select onchange="FILTERS.cards.typeId=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">全部類型</option>
+        ${DATA.types.map(t=>`<option value="${t.id}" ${f.typeId===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}
+      </select>
+      <select onchange="FILTERS.cards.charId=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">全部角色</option>
+        ${DATA.characters.map(c=>`<option value="${c.id}" ${f.charId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}
+      </select>
+      <select onchange="FILTERS.cards.status=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">已讀／未讀</option>
+        <option value="unread" ${f.status==='unread'?'selected':''}>未讀</option>
+        <option value="read" ${f.status==='read'?'selected':''}>已讀</option>
+      </select>
+      ${hasFilter? `<span class="filter-clear" onclick="FILTERS.cards={search:'',gameId:'',eventId:'',typeId:'',charId:'',status:'',date:''}; render()">清除篩選</span>`:''}
+    </div>
+    <div class="section-label">共 ${cards.length} 張</div>
+    <div class="list">
+      ${cards.length? cards.map(CardRow).join('') : `<div class="empty">沒有符合條件的卡片${DATA.games.length===0?'<br><span class="add-link" onclick="nav(\'settings\',{tab:\'games\'})">先到設定新增遊戲</span>':''}</div>`}
+    </div>
+    ${DATA.games.length? `<div class="fab-row"><button class="plus-btn" onclick="nav('cardForm',{})">＋ 新增卡片</button></div>`:''}
+  `;
+}
+
+/* =========================================================
+   新增／編輯卡片
+   ========================================================= */
+function renderCardForm(params){
+  const editing = params.id? DATA.cards.find(c=>c.id===params.id) : null;
+  const draft = editing? {...editing, characterIds:[...(editing.characterIds||[])]} : {
+    id: null, gameId: params.gameId||'', eventId:'', name:'', typeId:'', characterIds:[],
+    readDate:'', status:'unread', rating:0, note:''
+  };
+  window._cardDraft = draft;
+
+  if(DATA.games.length===0){
+    return `${TopBar('新增卡片',{back:true})}
+      <div class="empty">請先到「設定」新增至少一個遊戲，才能建立卡片。<br>
+      <span class="add-link" onclick="nav('settings',{tab:'games'})">前往設定新增遊戲</span></div>`;
+  }
+  if(DATA.types.length===0){
+    return `${TopBar('新增卡片',{back:true})}
+      <div class="empty">請先到「設定」新增至少一個卡片類型。<br>
+      <span class="add-link" onclick="nav('settings',{tab:'types'})">前往設定新增類型</span></div>`;
+  }
+
+  const eventsOfGame = draft.gameId? DATA.events.filter(e=>e.gameId===draft.gameId) : [];
+
+  return `
+    ${TopBar(editing? '編輯卡片':'新增卡片', {back:true})}
+    <div class="form-wrap">
+
+      <div class="form-field">
+        <label class="req">遊戲</label>
+        <select id="f_gameId" onchange="onDraftGameChange(this.value)">
+          <option value="">請選擇</option>
+          ${DATA.games.map(g=>`<option value="${g.id}" ${draft.gameId===g.id?'selected':''}>${esc(g.name)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label>活動（可不填）</label>
+        <select id="f_eventId">
+          <option value="">無</option>
+          ${eventsOfGame.map(e=>`<option value="${e.id}" ${draft.eventId===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}
+        </select>
+        ${draft.gameId? '':'<div class="hint">請先選擇遊戲</div>'}
+      </div>
+
+      <div class="form-field">
+        <label class="req">卡片名稱</label>
+        <input id="f_name" type="text" placeholder="例如：空杯溢滿" value="${esc(draft.name)}">
+      </div>
+
+      <div class="form-field">
+        <label class="req">類型</label>
+        <div class="choice-list">
+          ${DATA.types.map(t=>`<span class="choice ${draft.typeId===t.id?'selected':''}" onclick="pickSingle('typeId','${t.id}')">${esc(t.name)}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>角色（可複選）</label>
+        <div class="choice-list" id="charChoiceList">
+          ${DATA.characters.map(c=>`<span class="choice ${draft.characterIds.includes(c.id)?'selected':''}" onclick="toggleMulti('characterIds','${c.id}')">${esc(c.name)}</span>`).join('')}
+          ${DATA.characters.length===0? `<span class="hint">尚未建立角色，可到設定新增</span>`:''}
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>閱讀日期（可不填）</label>
+        <input id="f_readDate" type="date" value="${esc(draft.readDate||'')}">
+      </div>
+
+      <div class="form-field">
+        <label>閱讀狀態</label>
+        <div class="choice-list">
+          <span class="choice ${draft.status==='unread'?'selected':''}" onclick="pickSingle('status','unread')">未讀</span>
+          <span class="choice ${draft.status==='read'?'selected':''}" onclick="pickSingle('status','read')">已讀</span>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>星級</label>
+        <div class="choice-list">
+          ${[0,1,2,3,4,5].map(n=>`<span class="choice ${draft.rating===n?'selected':''}" onclick="pickSingle('rating',${n})">${n===0?'無':'★'.repeat(n)}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>心得／備註</label>
+        <textarea id="f_note" placeholder="寫點什麼...">${esc(draft.note)}</textarea>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-text" onclick="goBack()">取消</button>
+        <button class="btn-primary" onclick="submitCardForm()">${editing?'儲存修改':'新增卡片'}</button>
+      </div>
+    </div>
+  `;
+}
+function onDraftGameChange(gid){
+  window._cardDraft.gameId = gid;
+  window._cardDraft.eventId = '';
+  render();
+}
+function pickSingle(field, value){
+  window._cardDraft[field] = value;
+  render();
+}
+function toggleMulti(field, value){
+  const arr = window._cardDraft[field];
+  const i = arr.indexOf(value);
+  if(i>=0) arr.splice(i,1); else arr.push(value);
+  render();
+}
+function submitCardForm(){
+  const d = window._cardDraft;
+  d.gameId = document.getElementById('f_gameId').value;
+  d.eventId = document.getElementById('f_eventId').value;
+  d.name = document.getElementById('f_name').value.trim();
+  d.readDate = document.getElementById('f_readDate').value;
+  d.note = document.getElementById('f_note').value;
+
+  if(!d.gameId){ showToast('請選擇遊戲'); return; }
+  if(!d.name){ showToast('卡片名稱不能為空白'); return; }
+  if(!d.typeId){ showToast('請選擇類型'); return; }
+
+  if(d.id){
+    const idx = DATA.cards.findIndex(c=>c.id===d.id);
+    DATA.cards[idx] = {...d};
+  } else {
+    d.id = uid();
+    DATA.cards.push({...d});
+  }
+  scheduleSave();
+  showToast(d.id? '已儲存':'已新增卡片');
+  nav('cardDetail',{id:d.id});
+}
+
+/* =========================================================
+   卡片詳細頁
+   ========================================================= */
+function renderCardDetail(id){
+  const c = DATA.cards.find(x=>x.id===id);
+  if(!c) return renderNotFound('找不到這張卡片');
+  const g = gameById(c.gameId);
+  const ev = c.eventId? eventById(c.eventId): null;
+  const t = typeById(c.typeId);
+  const chars = (c.characterIds||[]).map(id=>charById(id)).filter(Boolean);
+
+  return `
+    ${TopBar(c.name, {back:true})}
+    <div class="field-block">
+      <div class="field-label">遊戲</div>
+      <div class="field-value">${g? `<span class="link" onclick="nav('gameDetail',{id:'${g.id}'})">${esc(g.name)}</span>` : '<span class="muted">—</span>'}</div>
+    </div>
+    <div class="field-block">
+      <div class="field-label">活動</div>
+      <div class="field-value">${ev? `<span class="link" onclick="nav('eventDetail',{id:'${ev.id}'})">${esc(ev.name)}</span>` : '<span class="muted">未關聯活動</span>'}</div>
+    </div>
+    <div class="field-block">
+      <div class="field-label">類型</div>
+      <div class="field-value">${t?esc(t.name):'<span class="muted">—</span>'}</div>
+    </div>
+    <div class="field-block">
+      <div class="field-label">角色</div>
+      <div class="field-value">${chars.length? chars.map(ch=>`<span class="link" onclick="nav('characterDetail',{id:'${ch.id}'})">${esc(ch.name)}</span>`).join('、') : '<span class="muted">未關聯角色</span>'}</div>
+    </div>
+    <div class="field-block">
+      <div class="field-label">閱讀日期</div>
+      <div class="field-value">${c.readDate? fmtDate(c.readDate) : '<span class="muted">未記錄</span>'}</div>
+    </div>
+    <div class="field-block">
+      <div class="field-label">閱讀狀態</div>
+      <div class="field-value" style="display:flex;align-items:center;gap:10px;">
+        ${StatusDot(c.status)}${c.status==='read'?'已讀':'未讀'}
+        <button class="btn-text" onclick="toggleCardStatus('${c.id}')">切換為${c.status==='read'?'未讀':'已讀'}</button>
+      </div>
+    </div>
+    ${c.rating? `<div class="field-block">
+      <div class="field-label">星級</div>
+      <div class="stars">${'★'.repeat(c.rating)}${'☆'.repeat(5-c.rating)}</div>
+    </div>`:''}
+    <div class="field-block">
+      <div class="field-label">心得／備註</div>
+      <div class="field-value note-block">${c.note? esc(c.note) : '<span class="muted">尚未撰寫</span>'}</div>
+    </div>
+    <div class="detail-actions">
+      <button onclick="nav('cardForm',{id:'${c.id}'})">編輯</button>
+      <button class="danger" onclick="deleteCard('${c.id}')">刪除</button>
+    </div>
+  `;
+}
+function toggleCardStatus(id){
+  const c = DATA.cards.find(x=>x.id===id);
+  c.status = c.status==='read'?'unread':'read';
+  scheduleSave(); render();
+}
+function deleteCard(id){
+  confirmModal({
+    title:'刪除這張卡片？',
+    desc:'刪除後無法復原。',
+    onConfirm:()=>{
+      DATA.cards = DATA.cards.filter(c=>c.id!==id);
+      scheduleSave();
+      showToast('已刪除');
+      nav('cards',{});
+    }
+  });
+}
+
+/* =========================================================
+   角色列表 / 詳細
+   ========================================================= */
+let charsSearch = '';
+function renderCharactersPage(){
+  const list = DATA.characters
+    .filter(c=>c.name.toLowerCase().includes(charsSearch.toLowerCase()))
+    .sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
+  return `
+    ${TopBar('角色檔案')}
+    <div class="searchbar">
+      <span class="icon">搜尋</span>
+      <input id="charsSearch" placeholder="輸入角色名稱" value="${esc(charsSearch)}">
+    </div>
+    <div class="list">
+      ${list.length? list.map(c=>`
+        <div class="row" onclick="nav('characterDetail',{id:'${c.id}'})">
+          <div class="row-main">
+            <p class="row-title">${esc(c.name)}</p>
+            <div class="row-sub"><span>${c.slogan? esc(c.slogan): '尚無 Slogan'}</span></div>
+          </div>
+          <div class="row-right"><span>${cardsOfChar(c.id).length} 張卡片</span></div>
+        </div>
+      `).join('') : `<div class="empty">還沒有角色檔案<br><span class="add-link" onclick="nav('settings',{tab:'characters'})">到設定新增角色</span></div>`}
+    </div>
+  `;
+}
+function renderCharacterDetail(id){
+  const c = charById(id);
+  if(!c) return renderNotFound('找不到這個角色');
+  const f = FILTERS.charDetail;
+  let cards = cardsOfChar(id);
+  if(f.search) cards = cards.filter(x=>x.name.toLowerCase().includes(f.search.toLowerCase()));
+  if(f.gameId) cards = cards.filter(x=>x.gameId===f.gameId);
+  if(f.typeId) cards = cards.filter(x=>x.typeId===f.typeId);
+  if(f.status) cards = cards.filter(x=>x.status===f.status);
+  cards.sort((a,b)=> a.status!==b.status? (a.status==='read'?1:-1) : a.name.localeCompare(b.name,'zh-Hant'));
+
+  return `
+    ${TopBar(c.name, {back:true})}
+    ${c.slogan? `<div class="page-pad" style="padding-bottom:6px;"><p class="serif" style="font-size:15px;color:var(--text-2);font-style:italic;">「${esc(c.slogan)}」</p></div>`:''}
+    ${c.note? `<div class="page-pad" style="padding-bottom:10px;"><p style="font-size:13px;color:var(--text-3);">${esc(c.note)}</p></div>`:''}
+    <div class="searchbar">
+      <span class="icon">搜尋</span>
+      <input id="charDetailSearch" placeholder="搜尋此角色的卡片" value="${esc(f.search||'')}">
+    </div>
+    <div class="filter-row">
+      <select onchange="FILTERS.charDetail.gameId=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">全部遊戲</option>
+        ${DATA.games.map(g=>`<option value="${g.id}" ${f.gameId===g.id?'selected':''}>${esc(g.name)}</option>`).join('')}
+      </select>
+      <select onchange="FILTERS.charDetail.status=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">已讀／未讀</option>
+        <option value="unread" ${f.status==='unread'?'selected':''}>未讀</option>
+        <option value="read" ${f.status==='read'?'selected':''}>已讀</option>
+      </select>
+      ${(f.search||f.gameId||f.typeId||f.status)?`<span class="filter-clear" onclick="FILTERS.charDetail={}; render()">清除篩選</span>`:''}
+    </div>
+    <div class="section-label">關聯卡片（${cards.length}）</div>
+    <div class="list">${cards.length? cards.map(CardRow).join(''): `<div class="empty">沒有符合條件的卡片</div>`}</div>
+  `;
+}
+
+/* =========================================================
+   活動詳細頁
+   ========================================================= */
+function renderEventDetail(id){
+  const e = eventById(id);
+  if(!e) return renderNotFound('找不到這個活動');
+  const g = gameById(e.gameId);
+  const f = FILTERS.eventDetail;
+  let cards = cardsOfEvent(id);
+  if(f.search) cards = cards.filter(c=>c.name.toLowerCase().includes(f.search.toLowerCase()));
+  if(f.typeId) cards = cards.filter(c=>c.typeId===f.typeId);
+  if(f.charId) cards = cards.filter(c=>(c.characterIds||[]).includes(f.charId));
+  if(f.status) cards = cards.filter(c=>c.status===f.status);
+  cards.sort((a,b)=> a.status!==b.status? (a.status==='read'?1:-1) : a.name.localeCompare(b.name,'zh-Hant'));
+
+  return `
+    ${TopBar(e.name, {back:true})}
+    <div class="page-pad" style="padding-bottom:10px;">
+      <p style="font-size:13.5px;color:var(--text-2);">${g?`<span class="link" onclick="nav('gameDetail',{id:'${g.id}'})">${esc(g.name)}</span>`:''}</p>
+      ${e.note? `<p style="font-size:13px;color:var(--text-3);margin-top:6px;">${esc(e.note)}</p>`:''}
+    </div>
+    <div class="searchbar">
+      <span class="icon">搜尋</span>
+      <input id="eventDetailSearch" placeholder="搜尋此活動的卡片" value="${esc(f.search||'')}">
+    </div>
+    <div class="filter-row">
+      <select onchange="FILTERS.eventDetail.status=this.value; render()" style="border:none;border-bottom:1px solid var(--line);font-size:13px;color:var(--text-2);width:auto;">
+        <option value="">已讀／未讀</option>
+        <option value="unread" ${f.status==='unread'?'selected':''}>未讀</option>
+        <option value="read" ${f.status==='read'?'selected':''}>已讀</option>
+      </select>
+      ${(f.search||f.typeId||f.charId||f.status)?`<span class="filter-clear" onclick="FILTERS.eventDetail={}; render()">清除篩選</span>`:''}
+    </div>
+    <div class="section-label">卡片（${cards.length}）</div>
+    <div class="list">${cards.length? cards.map(CardRow).join(''): `<div class="empty">這個活動還沒有卡片</div>`}</div>
+  `;
+}
+
+/* =========================================================
+   日曆
+   ========================================================= */
+let calCursor = (()=>{ const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })();
+let calSelected = null;
+
+function renderCalendar(){
+  const {y,m} = calCursor;
+  const first = new Date(y,m,1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const today = todayStr();
+
+  const byDate = {};
+  DATA.cards.forEach(c=>{
+    if(c.readDate){ (byDate[c.readDate] = byDate[c.readDate]||[]).push(c); }
+  });
+
+  let cells = '';
+  for(let i=0;i<startDow;i++) cells += `<div class="cal-cell empty"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const has = byDate[dateStr];
+    const cls = ['cal-cell'];
+    if(dateStr===today) cls.push('today');
+    if(dateStr===calSelected) cls.push('selected');
+    if(has) cls.push('has-record');
+    cells += `<div class="${cls.join(' ')}" onclick="calSelected='${dateStr}'; render()">
+      <span>${d}</span>${has? `<span class="dot"></span>`:''}
+    </div>`;
+  }
+
+  const dows = ['日','一','二','三','四','五','六'];
+  const selCards = calSelected? (byDate[calSelected]||[]) : [];
+
+  return `
+    ${TopBar('經歷')}
+    <div class="cal-head">
+      <span class="month serif">${y} 年 ${m+1} 月</span>
+      <div class="cal-nav">
+        <button onclick="calCursor.m--; if(calCursor.m<0){calCursor.m=11;calCursor.y--;} render()">‹</button>
+        <button onclick="calCursor={y:new Date().getFullYear(),m:new Date().getMonth()}; render()">今天</button>
+        <button onclick="calCursor.m++; if(calCursor.m>11){calCursor.m=0;calCursor.y++;} render()">›</button>
+      </div>
+    </div>
+    <div class="cal-grid">
+      ${dows.map(d=>`<div class="cal-dow">${d}</div>`).join('')}
+      ${cells}
+    </div>
+    <div class="section-label">${calSelected? fmtDate(calSelected)+'　的紀錄':'點選日期查看紀錄'}</div>
+    <div class="list">
+      ${calSelected? (selCards.length? selCards.map(CardRow).join('') : `<div class="empty">這天沒有閱讀紀錄</div>`) : ''}
+    </div>
+  `;
+}
+
+/* =========================================================
+   設定頁
+   ========================================================= */
+let settingsTab = 'types';
+
+function renderSettings(params){
+  if(params && params.tab) settingsTab = params.tab;
+  const tabs = [
+    {key:'types', label:'類型'},
+    {key:'characters', label:'角色'},
+    {key:'games', label:'遊戲'},
+    {key:'events', label:'活動'},
+    {key:'backup', label:'備份'},
+  ];
+  let body = '';
+  if(settingsTab==='types') body = renderTypesSettings();
+  if(settingsTab==='characters') body = renderCharactersSettings();
+  if(settingsTab==='games') body = renderGamesSettings();
+  if(settingsTab==='events') body = renderEventsSettings();
+  if(settingsTab==='backup') body = renderBackupSettings();
+
+  return `
+    ${TopBar('設定')}
+    <div class="tabs">
+      ${tabs.map(t=>`<span class="tab ${settingsTab===t.key?'active':''}" onclick="settingsTab='${t.key}'; render()">${t.label}</span>`).join('')}
+    </div>
+    <div class="page-pad">${body}</div>
+  `;
+}
+
+function renderTypesSettings(){
+  const types = DATA.types.slice().sort((a,b)=>a.order-b.order);
+  return `
+    <div class="inline-add">
+      <input id="newTypeName" placeholder="新增類型名稱">
+      <button onclick="addType()">新增</button>
+    </div>
+    ${types.map((t,i)=>`
+      <div class="settings-item">
+        <div>
+          <div class="name">${esc(t.name)}</div>
+          <div class="meta">${cardsOfType(t.id).length} 張卡片使用中</div>
+        </div>
+        <div class="ops">
+          <button onclick="moveType('${t.id}',-1)" ${i===0?'disabled style="opacity:.3"':''}>上移</button>
+          <button onclick="moveType('${t.id}',1)" ${i===types.length-1?'disabled style="opacity:.3"':''}>下移</button>
+          <button onclick="renameType('${t.id}')">重新命名</button>
+          <button class="danger" onclick="deleteType('${t.id}')">刪除</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+function addType(){
+  const input = document.getElementById('newTypeName');
+  const name = input.value.trim();
+  if(!name){ showToast('名稱不能為空白'); return; }
+  DATA.types.push({id:uid(), name, order: DATA.types.length});
+  scheduleSave(); render();
+}
+function renameType(id){
+  const t = typeById(id);
+  promptModal({title:'重新命名類型', initial:t.name, onConfirm:(v)=>{ t.name=v; scheduleSave(); render(); }});
+}
+function moveType(id, dir){
+  const types = DATA.types.slice().sort((a,b)=>a.order-b.order);
+  const idx = types.findIndex(t=>t.id===id);
+  const swapIdx = idx+dir;
+  if(swapIdx<0||swapIdx>=types.length) return;
+  const tmp = types[idx].order;
+  types[idx].order = types[swapIdx].order;
+  types[swapIdx].order = tmp;
+  scheduleSave(); render();
+}
+function deleteType(id){
+  const used = cardsOfType(id);
+  const t = typeById(id);
+  if(used.length===0){
+    confirmModal({title:'刪除這個類型？', desc:'目前沒有卡片使用此類型。', onConfirm:()=>{
+      DATA.types = DATA.types.filter(x=>x.id!==id);
+      scheduleSave(); render();
+    }});
+    return;
+  }
+  const others = DATA.types.filter(x=>x.id!==id);
+  if(others.length===0){
+    showToast('至少需要保留一個類型，請先新增其他類型');
+    return;
+  }
+  const selId = 'sel_'+uid();
+  const m = Modal(`
+    <h3>這個類型還有 ${used.length} 張卡片在使用</h3>
+    <p>刪除前請選擇要將這些卡片改為哪個類型：</p>
+    <div class="form-field" style="margin-bottom:20px;">
+      <select id="${selId}">
+        ${others.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel" onclick="closeModal()">取消</button>
+      <button class="confirm" id="${selId}_ok">改配並刪除</button>
+    </div>
+  `);
+  m.querySelector('#'+selId+'_ok').addEventListener('click', ()=>{
+    const newId = m.querySelector('#'+selId).value;
+    used.forEach(c=>c.typeId=newId);
+    DATA.types = DATA.types.filter(x=>x.id!==id);
+    closeModal(); scheduleSave(); render();
+    showToast('已刪除並轉換相關卡片');
+  });
+}
+
+function renderCharactersSettings(){
+  return `
+    <div class="inline-add">
+      <input id="newCharName" placeholder="新增角色名稱">
+      <button onclick="addCharacter()">新增</button>
+    </div>
+    ${DATA.characters.slice().sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant')).map(c=>`
+      <div class="settings-item">
+        <div>
+          <div class="name">${esc(c.name)}</div>
+          <div class="meta">${c.slogan? esc(c.slogan)+'　·　':''}${cardsOfChar(c.id).length} 張卡片關聯</div>
+        </div>
+        <div class="ops">
+          <button onclick="editCharacter('${c.id}')">編輯</button>
+          <button class="danger" onclick="deleteCharacter('${c.id}')">刪除</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+function addCharacter(){
+  const input = document.getElementById('newCharName');
+  const name = input.value.trim();
+  if(!name){ showToast('名稱不能為空白'); return; }
+  DATA.characters.push({id:uid(), name, slogan:'', note:''});
+  scheduleSave(); render();
+}
+function editCharacter(id){
+  const c = charById(id);
+  const fid = 'ec_'+uid();
+  const m = Modal(`
+    <h3>編輯角色</h3>
+    <div class="form-field"><label>角色名稱</label><input id="${fid}_name" value="${esc(c.name)}"></div>
+    <div class="form-field"><label>Slogan</label><input id="${fid}_slogan" value="${esc(c.slogan||'')}"></div>
+    <div class="form-field"><label>備註</label><textarea id="${fid}_note">${esc(c.note||'')}</textarea></div>
+    <div class="modal-actions">
+      <button class="cancel" onclick="closeModal()">取消</button>
+      <button class="confirm" id="${fid}_ok" style="color:var(--text)">儲存</button>
+    </div>
+  `);
+  m.querySelector('#'+fid+'_ok').addEventListener('click', ()=>{
+    const name = m.querySelector('#'+fid+'_name').value.trim();
+    if(!name){ showToast('名稱不能為空白'); return; }
+    c.name = name;
+    c.slogan = m.querySelector('#'+fid+'_slogan').value.trim();
+    c.note = m.querySelector('#'+fid+'_note').value.trim();
+    closeModal(); scheduleSave(); render();
+  });
+}
+function deleteCharacter(id){
+  const used = cardsOfChar(id);
+  confirmModal({
+    title:'刪除這個角色？',
+    desc: used.length? `有 ${used.length} 張卡片關聯此角色，刪除後將自動從這些卡片中移除關聯。` : '目前沒有卡片關聯此角色。',
+    onConfirm:()=>{
+      used.forEach(c=>{ c.characterIds = (c.characterIds||[]).filter(x=>x!==id); });
+      DATA.characters = DATA.characters.filter(c=>c.id!==id);
+      scheduleSave(); render();
+      showToast('已刪除');
+    }
+  });
+}
+
+function renderGamesSettings(){
+  return `
+    <div class="inline-add">
+      <input id="newGameName" placeholder="新增遊戲名稱">
+      <button onclick="addGameFromSettings()">新增</button>
+    </div>
+    ${DATA.games.slice().sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant')).map(g=>`
+      <div class="settings-item">
+        <div>
+          <div class="name">${esc(g.name)}</div>
+          <div class="meta">${cardsOfGame(g.id).length} 張卡片　·　${DATA.events.filter(e=>e.gameId===g.id).length} 個活動</div>
+        </div>
+        <div class="ops">
+          <button onclick="editGame('${g.id}')">編輯</button>
+          <button class="danger" onclick="deleteGame('${g.id}')">刪除</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+function addGameFromSettings(){
+  const input = document.getElementById('newGameName');
+  const name = input.value.trim();
+  if(!name){ showToast('名稱不能為空白'); return; }
+  DATA.games.push({id:uid(), name, note:''});
+  scheduleSave(); render();
+}
+function editGame(id){
+  const g = gameById(id);
+  const fid='eg_'+uid();
+  const m = Modal(`
+    <h3>編輯遊戲</h3>
+    <div class="form-field"><label>遊戲名稱</label><input id="${fid}_name" value="${esc(g.name)}"></div>
+    <div class="form-field"><label>備註</label><textarea id="${fid}_note">${esc(g.note||'')}</textarea></div>
+    <div class="modal-actions">
+      <button class="cancel" onclick="closeModal()">取消</button>
+      <button class="confirm" id="${fid}_ok" style="color:var(--text)">儲存</button>
+    </div>
+  `);
+  m.querySelector('#'+fid+'_ok').addEventListener('click', ()=>{
+    const name = m.querySelector('#'+fid+'_name').value.trim();
+    if(!name){ showToast('名稱不能為空白'); return; }
+    g.name = name;
+    g.note = m.querySelector('#'+fid+'_note').value.trim();
+    closeModal(); scheduleSave(); render();
+  });
+}
+function deleteGame(id){
+  const cards = cardsOfGame(id);
+  const events = DATA.events.filter(e=>e.gameId===id);
+  confirmModal({
+    title:'刪除這個遊戲？',
+    desc: (cards.length||events.length)?
+      `這個遊戲底下有 ${cards.length} 張卡片與 ${events.length} 個活動，刪除遊戲會一併刪除它們，且無法復原。` :
+      '這個遊戲目前沒有任何卡片或活動。',
+    onConfirm:()=>{
+      DATA.cards = DATA.cards.filter(c=>c.gameId!==id);
+      DATA.events = DATA.events.filter(e=>e.gameId!==id);
+      DATA.games = DATA.games.filter(g=>g.id!==id);
+      scheduleSave(); render();
+      showToast('已刪除');
+    }
+  });
+}
+
+function renderEventsSettings(){
+  if(DATA.games.length===0){
+    return `<div class="empty">請先新增遊戲，才能建立活動</div>`;
+  }
+  return `
+    <div class="inline-add" style="flex-wrap:wrap;">
+      <select id="newEventGame" style="flex:1;min-width:120px;">
+        ${DATA.games.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}
+      </select>
+      <input id="newEventName" placeholder="新增活動名稱" style="flex:2;min-width:140px;">
+      <button onclick="addEvent()">新增</button>
+    </div>
+    ${DATA.events.slice().sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant')).map(e=>{
+      const g = gameById(e.gameId);
+      return `
+      <div class="settings-item">
+        <div>
+          <div class="name">${esc(e.name)}</div>
+          <div class="meta">${g?esc(g.name):'（遊戲已刪除）'}　·　${cardsOfEvent(e.id).length} 張卡片</div>
+        </div>
+        <div class="ops">
+          <button onclick="editEvent('${e.id}')">編輯</button>
+          <button class="danger" onclick="deleteEvent('${e.id}')">刪除</button>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+function addEvent(){
+  const gid = document.getElementById('newEventGame').value;
+  const nameInput = document.getElementById('newEventName');
+  const name = nameInput.value.trim();
+  if(!name){ showToast('名稱不能為空白'); return; }
+  DATA.events.push({id:uid(), name, gameId:gid, note:''});
+  scheduleSave(); render();
+}
+function editEvent(id){
+  const e = eventById(id);
+  const fid='ee_'+uid();
+  const m = Modal(`
+    <h3>編輯活動</h3>
+    <div class="form-field"><label>活動名稱</label><input id="${fid}_name" value="${esc(e.name)}"></div>
+    <div class="form-field"><label>所屬遊戲</label>
+      <select id="${fid}_game">${DATA.games.map(g=>`<option value="${g.id}" ${g.id===e.gameId?'selected':''}>${esc(g.name)}</option>`).join('')}</select>
+    </div>
+    <div class="form-field"><label>備註</label><textarea id="${fid}_note">${esc(e.note||'')}</textarea></div>
+    <div class="modal-actions">
+      <button class="cancel" onclick="closeModal()">取消</button>
+      <button class="confirm" id="${fid}_ok" style="color:var(--text)">儲存</button>
+    </div>
+  `);
+  m.querySelector('#'+fid+'_ok').addEventListener('click', ()=>{
+    const name = m.querySelector('#'+fid+'_name').value.trim();
+    if(!name){ showToast('名稱不能為空白'); return; }
+    e.name = name;
+    e.gameId = m.querySelector('#'+fid+'_game').value;
+    e.note = m.querySelector('#'+fid+'_note').value.trim();
+    closeModal(); scheduleSave(); render();
+  });
+}
+function deleteEvent(id){
+  const used = cardsOfEvent(id);
+  confirmModal({
+    title:'刪除這個活動？',
+    desc: used.length? `有 ${used.length} 張卡片關聯此活動，刪除後這些卡片將變成「未關聯活動」。` : '目前沒有卡片關聯此活動。',
+    onConfirm:()=>{
+      used.forEach(c=>{ c.eventId=''; });
+      DATA.events = DATA.events.filter(e=>e.id!==id);
+      scheduleSave(); render();
+      showToast('已刪除');
+    }
+  });
+}
+
+function renderBackupSettings(){
+  return `
+    <div class="backup-block">
+      <div class="desc">資料儲存在你的個人雲端儲存空間中，不需登入、不會分享給其他人，但也建議定期匯出備份，避免資料遺失。</div>
+      <button onclick="exportData()">匯出備份（JSON）</button>
+    </div>
+    <div class="backup-block">
+      <div class="desc">選擇先前匯出的備份檔案來還原資料。匯入前會詢問要覆蓋還是合併目前的資料。</div>
+      <label>選擇檔案匯入
+        <input type="file" accept="application/json" style="display:none" onchange="handleImportFile(event)">
+      </label>
+    </div>
+    <div class="backup-block" style="border-bottom:none;">
+      <div class="desc">目前資料：${DATA.games.length} 個遊戲、${DATA.events.length} 個活動、${DATA.characters.length} 個角色、${DATA.cards.length} 張卡片。</div>
+    </div>
+  `;
+}
+function exportData(){
+  const blob = new Blob([JSON.stringify(DATA,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = url;
+  a.download = `gamecard-backup-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('已匯出備份');
+}
+function handleImportFile(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let parsed;
+    try{ parsed = JSON.parse(reader.result); }
+    catch(e){ showToast('檔案格式錯誤，無法讀取'); return; }
+    if(!parsed || !Array.isArray(parsed.games) || !Array.isArray(parsed.cards)){
+      showToast('檔案內容不完整，無法匯入'); return;
+    }
+    const m = Modal(`
+      <h3>匯入備份</h3>
+      <p>要如何處理目前的資料？<br>覆蓋：清空現有資料，改用備份檔案內容。<br>合併：保留現有資料，加入備份檔案中新增的項目。</p>
+      <div class="modal-actions">
+        <button class="cancel" onclick="closeModal()">取消</button>
+        <button class="btn-text" id="mergeBtn" style="color:var(--text)">合併</button>
+        <button class="confirm" id="overwriteBtn">覆蓋</button>
+      </div>
+    `);
+    m.querySelector('#overwriteBtn').addEventListener('click', ()=>{
+      DATA = parsed;
+      closeModal(); scheduleSave(); render(); showToast('已覆蓋匯入');
+    });
+    m.querySelector('#mergeBtn').addEventListener('click', ()=>{
+      mergeImport(parsed);
+      closeModal(); scheduleSave(); render(); showToast('已合併匯入');
+    });
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+function mergeImport(incoming){
+  const existingIds = new Set([
+    ...DATA.games.map(g=>g.id), ...DATA.events.map(e=>e.id),
+    ...DATA.characters.map(c=>c.id), ...DATA.types.map(t=>t.id), ...DATA.cards.map(c=>c.id)
+  ]);
+  ['games','events','characters','types','cards'].forEach(key=>{
+    (incoming[key]||[]).forEach(item=>{
+      if(!existingIds.has(item.id)){ DATA[key].push(item); }
+    });
+  });
+}
+
+/* =========================================================
+   Not found
+   ========================================================= */
+function renderNotFound(msg){
+  return `${TopBar('',{back:true})}<div class="empty">${esc(msg)}</div>`;
+}
+
+/* =========================================================
+   主渲染
+   ========================================================= */
+function render(){
+  const app = document.getElementById('app');
+  let html = '';
+  let activeNav = ROUTE.name;
+
+  switch(ROUTE.name){
+    case 'games': html = renderGamesPage(); break;
+    case 'gameDetail': html = renderGameDetail(ROUTE.params.id); activeNav='games'; break;
+    case 'cards': html = renderCardsPage(); break;
+    case 'cardDetail': html = renderCardDetail(ROUTE.params.id); activeNav='cards'; break;
+    case 'cardForm': html = renderCardForm(ROUTE.params); activeNav='cards'; break;
+    case 'characters': html = renderCharactersPage(); break;
+    case 'characterDetail': html = renderCharacterDetail(ROUTE.params.id); activeNav='characters'; break;
+    case 'eventDetail': html = renderEventDetail(ROUTE.params.id); activeNav='games'; break;
+    case 'calendar': html = renderCalendar(); break;
+    case 'settings': html = renderSettings(ROUTE.params); break;
+    default: html = renderGamesPage();
+  }
+
+  app.innerHTML = html + BottomNav(activeNav);
+  bindSearchInputs();
+}
+
+function bindSearchInputs(){
+  const map = [
+    ['gamesSearch', v=>{gamesSearch=v; render();}],
+    ['cardsSearch', v=>{FILTERS.cards.search=v; render();}],
+    ['charsSearch', v=>{charsSearch=v; render();}],
+    ['gameDetailSearch', v=>{FILTERS.gameDetail.search=v; render();}],
+    ['charDetailSearch', v=>{FILTERS.charDetail.search=v; render();}],
+    ['eventDetailSearch', v=>{FILTERS.eventDetail.search=v; render();}],
+  ];
+  map.forEach(([id,fn])=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    // preserve cursor position across re-render
+    const pos = el.selectionStart;
+    el.focus();
+    try{ el.setSelectionRange(pos,pos); }catch(e){}
+    el.oninput = ()=>{ fn(el.value); };
+  });
+}
+
+/* =========================================================
+   啟動
+   ========================================================= */
+(async function init(){
+  await loadData();
+  render();
+})();
+</script>
+</body>
+</html>
